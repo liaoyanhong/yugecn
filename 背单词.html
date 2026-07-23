@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📚 艾宾浩斯记忆背单词 - 每日30词</title>
+    <style>
+        :root {
+            --bg: #f8f9fa;
+            --card-bg: #ffffff;
+            --text: #2c3e50;
+            --subtext: #5a6c7d;
+            --accent: #4a90d9;
+            --accent-dark: #357abd;
+            --gold: #f0a500;
+            --new-badge: #27ae60;
+            --review-badge: #e67e22;
+            --master-bg: #f0c040;
+            --master-text: #7a5c10;
+            --border: #e0e5ec;
+            --shadow: 0 2px 12px rgba(0,0,0,0.06);
+            --shadow-lg: 0 8px 30px rgba(0,0,0,0.1);
+            --radius: 16px;
+            --radius-sm: 10px;
+            --transition: 0.25s cubic-bezier(0.4,0,0.2,1);
+            --font-mono: 'SF Mono','Cascadia Code','Consolas','Monaco',monospace;
+        }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body {
+            font-family: -apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;
+            background: var(--bg); color: var(--text); line-height:1.6;
+            min-height:100vh; -webkit-tap-highlight-color:transparent; -webkit-font-smoothing:antialiased;
+            padding-bottom: env(safe-area-inset-bottom, 20px);
+        }
+        .container { max-width:520px; margin:0 auto; padding:12px 14px 30px; }
+        .header {
+            text-align:center; padding:18px 0 8px; position:sticky; top:0; z-index:10;
+            background:var(--bg); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+        }
+        .header .logo { font-size:2rem; margin-bottom:2px; }
+        .header h1 { font-size:1.4rem; font-weight:700; letter-spacing:-0.02em; color:var(--text); }
+        .header .subtitle { font-size:0.8rem; color:var(--subtext); margin-top:-2px; }
+        .date-display {
+            text-align:center; font-size:0.95rem; font-weight:600; color:var(--accent);
+            margin:6px 0 10px; padding:8px 16px; background:#eef5fc; border-radius:20px;
+            display:inline-block; width:100%; letter-spacing:0.02em;
+        }
+        .level-selector { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin:10px 0 14px; }
+        .level-btn {
+            padding:10px 18px; border-radius:25px; border:2px solid var(--border);
+            background:var(--card-bg); font-size:0.9rem; font-weight:600; cursor:pointer;
+            transition:var(--transition); color:var(--subtext); white-space:nowrap;
+            letter-spacing:0.02em; -webkit-tap-highlight-color:transparent; user-select:none;
+        }
+        .level-btn:active { transform:scale(0.96); }
+        .level-btn.active {
+            border-color:var(--accent); background:#eef5fc; color:var(--accent);
+            font-weight:700; box-shadow:0 0 0 3px rgba(74,144,217,0.1);
+        }
+        .stats-bar { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-bottom:14px; }
+        .stat-chip {
+            padding:7px 14px; border-radius:20px; font-size:0.78rem; font-weight:600;
+            letter-spacing:0.02em; display:flex; align-items:center; gap:5px;
+        }
+        .stat-new { background:#e8f8ef; color:#1a7a42; }
+        .stat-review { background:#fef5ec; color:#b8601f; }
+        .stat-total { background:#eef2f7; color:#4a5568; }
+        .stat-dot { width:8px; height:8px; border-radius:50%; display:inline-block; }
+        .stat-dot.new { background:#27ae60; }
+        .stat-dot.review { background:#e67e22; }
+        .section-title {
+            font-size:1rem; font-weight:700; margin:16px 0 10px; padding-left:4px;
+            display:flex; align-items:center; gap:6px; letter-spacing:0.02em;
+        }
+        .word-card {
+            background:var(--card-bg); border-radius:var(--radius); padding:14px 16px;
+            margin-bottom:10px; box-shadow:var(--shadow); border-left:4px solid transparent;
+            transition:var(--transition); position:relative; overflow:hidden;
+        }
+        .word-card.new-word { border-left-color:var(--new-badge); }
+        .word-card.review-word { border-left-color:var(--review-badge); }
+        .word-card:active { transform:scale(0.985); box-shadow:var(--shadow-lg); }
+        .word-card .word-row { display:flex; align-items:baseline; flex-wrap:wrap; gap:8px; margin-bottom:4px; }
+        .word-card .word {
+            font-size:1.15rem; font-weight:700; color:var(--text); letter-spacing:-0.01em;
+            font-family:var(--font-mono); background:#f7f9fb; padding:3px 10px; border-radius:6px;
+        }
+        .word-card .phonetic { font-size:0.78rem; color:#888; font-family:var(--font-mono); }
+        .word-card .meaning { font-size:0.9rem; color:#e65100; font-weight:600; margin-bottom:4px; padding:2px 0; }
+        .word-card .example {
+            font-size:0.82rem; color:#555; font-style:italic; padding:6px 10px;
+            background:#fafbfc; border-radius:8px; margin-top:4px; line-height:1.5;
+            border:1px solid #f0f2f5;
+        }
+        .word-card .example .highlight {
+            font-weight:700; color:#2c3e50; font-style:normal;
+            background:#fff3cd; padding:1px 4px; border-radius:3px;
+        }
+        .word-card .tag {
+            position:absolute; top:10px; right:12px; font-size:0.68rem; font-weight:700;
+            padding:3px 10px; border-radius:12px; letter-spacing:0.03em;
+        }
+        .tag.new-tag { background:#e8f8ef; color:#1a7a42; }
+        .tag.review-tag { background:#fef5ec; color:#b8601f; }
+        .master-btn {
+            position:absolute; bottom:10px; right:12px; padding:4px 12px;
+            border-radius:15px; border:1px solid #e0c050; background:#fffbe6;
+            color:#7a5c10; font-size:0.7rem; font-weight:700; cursor:pointer;
+            transition:var(--transition); -webkit-tap-highlight-color:transparent;
+            letter-spacing:0.02em; z-index:2;
+        }
+        .master-btn:active { transform:scale(0.9); background:#f0c040; color:#fff; border-color:#c09830; }
+        .story-card {
+            background:linear-gradient(135deg,#fffbeb 0%,#fff7e0 50%,#fef9f0 100%);
+            border-radius:var(--radius); padding:18px 16px; margin-top:10px;
+            box-shadow:var(--shadow-lg); border:2px solid #f0d78c; position:relative; overflow:hidden;
+        }
+        .story-card::before {
+            content:'📖'; position:absolute; top:-15px; right:-5px; font-size:3.5rem;
+            opacity:0.12; transform:rotate(15deg);
+        }
+        .story-card h3 {
+            font-size:1rem; font-weight:700; margin-bottom:10px; color:#8b6914;
+            letter-spacing:0.02em; position:relative; z-index:1;
+        }
+        .story-card .story-en {
+            font-size:0.88rem; color:#4a3728; line-height:1.8; margin-bottom:14px;
+            padding:10px 12px; background:rgba(255,255,255,0.7); border-radius:10px;
+            position:relative; z-index:1; letter-spacing:0.01em;
+        }
+        .story-card .story-en .story-word {
+            font-weight:700; color:#c0392b; background:#fff3cd; padding:2px 5px;
+            border-radius:4px; font-family:var(--font-mono); font-size:0.85rem;
+        }
+        .story-card .divider { border:none; border-top:1px dashed #d4b87a; margin:10px 0; position:relative; z-index:1; }
+        .story-card .story-cn {
+            font-size:0.84rem; color:#5d4e37; line-height:1.8; padding:10px 12px;
+            background:rgba(255,255,255,0.6); border-radius:10px; position:relative;
+            z-index:1; letter-spacing:0.02em;
+        }
+        .story-card .story-cn .story-word-cn {
+            font-weight:700; color:#8b4513; background:#fff3cd; padding:1px 4px; border-radius:3px;
+        }
+        .action-row { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:18px; }
+        .btn {
+            padding:11px 22px; border-radius:25px; border:none; font-size:0.9rem;
+            font-weight:600; cursor:pointer; transition:var(--transition); letter-spacing:0.02em;
+            -webkit-tap-highlight-color:transparent; user-select:none; display:flex; align-items:center; gap:6px;
+        }
+        .btn:active { transform:scale(0.95); }
+        .btn-primary { background:var(--accent); color:#fff; box-shadow:0 4px 14px rgba(74,144,217,0.3); }
+        .btn-outline { background:var(--card-bg); color:var(--accent); border:2px solid var(--accent); }
+        .btn-small { padding:6px 14px; font-size:0.75rem; border-radius:18px; }
+        .btn-danger { background:#fff; color:#c0392b; border:2px solid #e0c8c4; }
+        .btn-success { background:#27ae60; color:#fff; border:2px solid #27ae60; }
+        .punch-info {
+            display:flex; align-items:center; gap:8px; justify-content:center;
+            margin:10px 0; font-weight:600; color:#2c3e50;
+        }
+        .punch-badge { background:#fef5ec; padding:6px 15px; border-radius:20px; font-size:0.9rem; }
+        .toast {
+            position:fixed; top:20px; left:50%; transform:translateX(-50%) translateY(-120px);
+            background:#333; color:#fff; padding:10px 22px; border-radius:25px;
+            font-size:0.85rem; font-weight:600; z-index:999;
+            transition:transform 0.35s cubic-bezier(0.175,0.885,0.32,1.275); pointer-events:none;
+        }
+        .toast.show { transform:translateX(-50%) translateY(0); }
+        .progress-wrap { margin:8px 0; }
+        .progress-bar { height:6px; background:#e9ecef; border-radius:3px; overflow:hidden; }
+        .progress-fill {
+            height:100%; background:linear-gradient(90deg,#27ae60,#2ecc71);
+            border-radius:3px; transition:width 0.5s ease;
+        }
+        @keyframes fadeInUp {
+            from { opacity:0; transform:translateY(16px); }
+            to { opacity:1; transform:translateY(0); }
+        }
+        .word-card,.story-card { animation:fadeInUp 0.4s ease forwards; }
+        .empty-state { text-align:center; padding:30px; color:#999; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <div class="logo">📚</div>
+        <h1>艾宾浩斯背单词</h1>
+        <p class="subtitle">每日30词 · 科学记忆 · 故事巩固</p>
+    </div>
+    <div class="level-selector" id="levelSelector">
+        <button class="level-btn active" data-level="cet4">🎓 四级</button>
+        <button class="level-btn" data-level="cet6">📖 六级</button>
+        <button class="level-btn" data-level="tem8">🏆 八级</button>
+    </div>
+    <div class="date-display" id="dateDisplay">📅 加载中...</div>
+    <div class="stats-bar" id="statsBar">
+        <span class="stat-chip stat-new"><span class="stat-dot new"></span> 新词: <strong id="newCount">15</strong></span>
+        <span class="stat-chip stat-review"><span class="stat-dot review"></span> 复习: <strong id="reviewCount">15</strong></span>
+        <span class="stat-chip stat-total">📊 已学: <strong id="totalLearned">0</strong></span>
+    </div>
+    <div class="progress-wrap">
+        <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%;"></div></div>
+        <small style="color:#888;font-size:0.7rem;" id="progressLabel">今日进度: 0/30</small>
+    </div>
+    <div class="punch-info">
+        <span class="punch-badge">🏆 累计打卡 <strong id="punchDays">0</strong> 天</span>
+    </div>
+    <div class="action-row">
+        <button class="btn btn-primary" id="btnRefresh">🔄 刷新今日单词</button>
+        <button class="btn btn-success" id="btnPunch">📌 今日打卡</button>
+        <button class="btn btn-danger btn-small" id="btnReset">🗑️ 重置进度</button>
+    </div>
+    <div class="section-title"><span class="emoji">🆕</span> 今日新词 (15个)</div>
+    <div id="newWordsContainer"></div>
+    <div class="section-title"><span class="emoji">🔄</span> 今日复习 (15个 · 艾宾浩斯曲线)</div>
+    <div id="reviewWordsContainer"></div>
+    <div class="section-title"><span class="emoji">📖</span> 巩固记忆 · 英文故事</div>
+    <div id="storyContainer"></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+    (function() {
+        const VOCABULARY = {
+            cet4: [
+                { word: "abandon", phonetic: "/əˈbændən/", meaning: "v. 放弃；抛弃", example: "He decided to abandon his old habits and start fresh.", exampleCn: "他决定放弃旧习惯，重新开始。" },
+                { word: "ability", phonetic: "/əˈbɪləti/", meaning: "n. 能力；才能", example: "She has the ability to solve complex problems quickly.", exampleCn: "她有能力快速解决复杂问题。" },
+                { word: "absence", phonetic: "/ˈæbsəns/", meaning: "n. 缺席；不在", example: "His absence from the meeting was noted by everyone.", exampleCn: "他缺席会议被每个人都注意到了。" },
+                { word: "absolute", phonetic: "/ˈæbsəluːt/", meaning: "adj. 绝对的；完全的", example: "You need absolute concentration for this task.", exampleCn: "你需要绝对的专注来完成这个任务。" },
+                { word: "absorb", phonetic: "/əbˈzɔːrb/", meaning: "v. 吸收；吸引", example: "Plants absorb sunlight to produce energy.", exampleCn: "植物吸收阳光来产生能量。" },
+                { word: "abstract", phonetic: "/ˈæbstrækt/", meaning: "adj. 抽象的 n. 摘要", example: "The concept is too abstract for beginners to understand.", exampleCn: "这个概念对初学者来说太抽象了。" },
+                { word: "abundant", phonetic: "/əˈbʌndənt/", meaning: "adj. 丰富的；充裕的", example: "The region has abundant natural resources.", exampleCn: "该地区拥有丰富的自然资源。" },
+                { word: "academic", phonetic: "/ˌækəˈdemɪk/", meaning: "adj. 学术的；学院的", example: "She published several academic papers this year.", exampleCn: "她今年发表了几篇学术论文。" },
+                { word: "accelerate", phonetic: "/əkˈseləreɪt/", meaning: "v. 加速；加快", example: "The car can accelerate from 0 to 100 in just 5 seconds.", exampleCn: "这辆车能在5秒内从0加速到100。" },
+                { word: "accomplish", phonetic: "/əˈkɑːmplɪʃ/", meaning: "v. 完成；实现", example: "We need to accomplish this project by Friday.", exampleCn: "我们需要在周五前完成这个项目。" },
+                { word: "accurate", phonetic: "/ˈækjərət/", meaning: "adj. 准确的；精确的", example: "The weather forecast proved to be accurate.", exampleCn: "天气预报被证明是准确的。" },
+                { word: "achieve", phonetic: "/əˈtʃiːv/", meaning: "v. 达到；取得", example: "She worked hard to achieve her career goals.", exampleCn: "她努力实现自己的职业目标。" },
+                { word: "acknowledge", phonetic: "/əkˈnɑːlɪdʒ/", meaning: "v. 承认；感谢", example: "He acknowledged his mistake and apologized.", exampleCn: "他承认了自己的错误并道了歉。" },
+                { word: "adapt", phonetic: "/əˈdæpt/", meaning: "v. 适应；改编", example: "Animals must adapt to changing environments.", exampleCn: "动物必须适应不断变化的环境。" },
+                { word: "adequate", phonetic: "/ˈædɪkwət/", meaning: "adj. 足够的；适当的", example: "We need adequate preparation before the exam.", exampleCn: "考试前我们需要充分的准备。" }
+            ],
+            cet6: [
+                { word: "abbreviation", phonetic: "/əˌbriːviˈeɪʃn/", meaning: "n. 缩写；缩略词", example: "'Dr.' is the abbreviation for 'Doctor'.", exampleCn: "'Dr.'是'Doctor'的缩写。" },
+                { word: "abide", phonetic: "/əˈbaɪd/", meaning: "v. 遵守；忍受", example: "All citizens must abide by the law.", exampleCn: "所有公民都必须遵守法律。" }
+            ],
+            tem8: [
+                { word: "aberration", phonetic: "/ˌæbəˈreɪʃn/", meaning: "n. 异常；偏差；失常", example: "The warm weather in December was an aberration.", exampleCn: "十二月的温暖天气是一种异常现象。" },
+                { word: "abeyance", phonetic: "/əˈbeɪəns/", meaning: "n. 中止；暂缓；搁置", example: "The project was held in abeyance pending further review.", exampleCn: "该项目被搁置，等待进一步审查。" }
+            ]
+        };
+
+        const STORAGE_KEY = 'eibbinghaus_vocab_data_v3';
+        const TODAY = new Date().toISOString().split('T')[0];
+        const EBBINGHAUS_INTERVALS = [1, 2, 4, 7, 15];
+
+        function getDefaultData() {
+            return { level: 'cet4', newWordIndex: 0, dailyWords: {}, wordRecords: {} };
+        }
+        function loadData() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                if (raw) return Object.assign(getDefaultData(), JSON.parse(raw));
+            } catch(e) {}
+            return getDefaultData();
+        }
+        function saveData(data) {
+            try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
+            catch(e) { showToast('⚠️ 存储空间不足'); }
+        }
+        let appData = loadData();
+
+        function getDateAfterDays(dateStr, days) {
+            const d = new Date(dateStr); d.setDate(d.getDate()+days);
+            return d.toISOString().split('T')[0];
+        }
+        function getWordKey(level, word) { return level + '::' + word; }
+        function getLevelVocab(level) { return VOCABULARY[level] || VOCABULARY['cet4']; }
+        function generateReviewSchedule(learnDate) { return EBBINGHAUS_INTERVALS.map(i => getDateAfterDays(learnDate, i)); }
+
+        function getTodayWords(data, level) {
+            const today = TODAY;
+            const vocab = getLevelVocab(level);
+            if (data.dailyWords[today] && data.dailyWords[today].newWords && data.dailyWords[today].newWords.length > 0) {
+                if (data.dailyWords[today].level === level) return data.dailyWords[today];
+            }
+
+            const allReviewCandidates = [];
+            for (const [key, record] of Object.entries(data.wordRecords)) {
+                if (!key.startsWith(level+'::') || record.mastered) continue;
+                if (record.reviewSchedule && record.reviewSchedule.includes(today) && record.lastReviewedDate !== today) {
+                    allReviewCandidates.push({ key, word: key.split('::')[1], record, urgency: record.reviewsCompleted||0 });
+                }
+            }
+            allReviewCandidates.sort((a,b)=>a.urgency-b.urgency || new Date(a.record.learnDate)-new Date(b.record.learnDate));
+            const selectedReview = allReviewCandidates.slice(0, 15);
+            const reviewWords = selectedReview.map(c => {
+                const full = vocab.find(v=>v.word===c.word);
+                return { ...(full||{word:c.word}), _reviewCount:(c.record.reviewsCompleted||0)+1, _wordKey:c.key };
+            });
+
+            const newWordCount = 30 - reviewWords.length;
+            const newWords = [];
+            const usedWords = new Set(Object.values(data.wordRecords).map(r=>r.word));
+            reviewWords.forEach(rw=>usedWords.add(rw.word));
+            let idx = data.newWordIndex, attempts=0;
+            while(newWords.length < newWordCount && attempts < vocab.length*2) {
+                const item = vocab[idx % vocab.length];
+                if(!usedWords.has(item.word) && !newWords.find(nw=>nw.word===item.word)) {
+                    newWords.push({...item, _isNew:true}); usedWords.add(item.word);
+                }
+                idx++; attempts++;
+            }
+            data.newWordIndex = idx % vocab.length;
+            const storyResult = generateStory([...newWords, ...reviewWords], vocab);
+            const dailyEntry = {
+                level, newWords, reviewWords,
+                story: storyResult.storyEn, storyCn: storyResult.storyCn,
+                markedDone: false, generatedAt: new Date().toISOString()
+            };
+            data.dailyWords[today] = dailyEntry;
+            for(const nw of newWords) {
+                const wKey = getWordKey(level, nw.word);
+                if(!data.wordRecords[wKey]) {
+                    data.wordRecords[wKey] = { word:nw.word, learnDate:today, reviewSchedule:generateReviewSchedule(today), reviewsCompleted:0, lastReviewedDate:null, mastered:false };
+                }
+            }
+            for(const rw of reviewWords) {
+                const wKey = rw._wordKey || getWordKey(level, rw.word);
+                if(data.wordRecords[wKey]) {
+                    data.wordRecords[wKey].reviewsCompleted = (data.wordRecords[wKey].reviewsCompleted||0)+1;
+                    data.wordRecords[wKey].lastReviewedDate = today;
+                }
+            }
+            saveData(data);
+            return dailyEntry;
+        }
+
+        function extractChineseMeaning(meaning) {
+            return meaning.replace(/^(n\.|v\.|adj\.|adv\.|prep\.|conj\.|pron\.|int\.)\s*/, '').split(/[；;，,]/)[0].trim();
+        }
+
+        function generateStory(words, vocab) {
+            const allWords = words.map(w=>w.word);
+            const nouns = words.filter(w=>w.meaning&&w.meaning.includes('n.')).map(w=>w.word);
+            const verbs = words.filter(w=>w.meaning&&w.meaning.includes('v.')).map(w=>w.word);
+            const adjs = words.filter(w=>w.meaning&&w.meaning.includes('adj.')).map(w=>w.word);
+            const allNouns = nouns.length>=3 ? nouns : [...nouns, ...allWords.slice(0,10)];
+            const allVerbs = verbs.length>=5 ? verbs : [...verbs, ...allWords.slice(10,20)];
+            const allAdjs = adjs.length>=5 ? adjs : [...adjs, ...allWords.slice(5,15)];
+            const templates = [
+                { frames:["This morning I woke up feeling {adj1}. The {noun1} outside was shining.","After breakfast I decided to {verb1} through the park. I met a {adj2} stranger.","I {verb2} the situation. The stranger was an old {noun2}.","We discussed {noun3} and philosophy. It was {adj3}.","By evening I realized how much I {verb3}. Life is full of surprises.","As I headed home I felt {noun4}. Today reminded me to {verb4} new chances."],
+                  cnFrames:["今天早上醒来感觉{adj1}。窗外的{noun1}很明亮。","早餐后我决定去公园{verb1}，遇到一位{adj2}的陌生人。","我{verb2}了一下，原来他是我的老{noun2}。","我们讨论了{noun3}和哲学，真是{adj3}。","傍晚我意识到自己{verb3}了很多。生活充满惊喜。","回家路上我感到{noun4}，今天提醒我要{verb4}新机会。"] },
+                { frames:["The journey began at dawn. We prepared to {verb1} into the unknown.","Our guide was {adj1} and reminded us to {verb2} rules.","We found a {adj2} landscape. It was breathtaking.","Suddenly a {noun1} appeared. Everyone {verb3} quickly.","Around the campfire we shared {noun2}. The challenge united us.","That adventure taught us to {verb4} fear and value {noun3}."],
+                  cnFrames:["旅程在黎明开始，我们准备{verb1}未知。","向导很{adj1}，提醒我们{verb2}规则。","我们发现{adj2}的风景，美得窒息。","突然出现一个{noun1}，大家迅速{verb3}。","篝火旁我们分享{noun2}，挑战让我们团结。","冒险教会我们{verb4}恐惧，珍惜{noun3}。"] }
+            ];
+            const t = templates[Math.floor(Math.random()*templates.length)];
+            let nIdx=0,vIdx=0,aIdx=0,used=new Set();
+            function getNoun(){ const w=allNouns[nIdx%allNouns.length]; nIdx++; used.add(w); return w; }
+            function getVerb(){ const w=allVerbs[vIdx%allVerbs.length]; vIdx++; used.add(w); return w; }
+            function getAdj(){ const w=allAdjs[aIdx%allAdjs.length]; aIdx++; used.add(w); return w; }
+            let storyEn = t.frames.map(f=>f.replace(/\{noun\d+\}/g,getNoun).replace(/\{verb\d+\}/g,getVerb).replace(/\{adj\d+\}/g,getAdj)).join(' ');
+            const remaining = allWords.filter(w=>!used.has(w));
+            if(remaining.length) storyEn += ' ' + remaining.map(w=>`"${w}" echoed in my mind.`).join(' ');
+
+            nIdx=0;vIdx=0;aIdx=0; used.clear();
+            function getNounCN(){ const w=allNouns[nIdx%allNouns.length]; nIdx++; used.add(w); const obj=vocab.find(v=>v.word===w); return obj?extractChineseMeaning(obj.meaning):w; }
+            function getVerbCN(){ const w=allVerbs[vIdx%allVerbs.length]; vIdx++; used.add(w); const obj=vocab.find(v=>v.word===w); return obj?extractChineseMeaning(obj.meaning):w; }
+            function getAdjCN(){ const w=allAdjs[aIdx%allAdjs.length]; aIdx++; used.add(w); const obj=vocab.find(v=>v.word===w); return obj?extractChineseMeaning(obj.meaning):w; }
+            let storyCn = t.cnFrames.map(f=>f.replace(/\{noun\d+\}/g,getNounCN).replace(/\{verb\d+\}/g,getVerbCN).replace(/\{adj\d+\}/g,getAdjCN)).join('');
+            const remCN = allWords.filter(w=>!used.has(w));
+            if(remCN.length) storyCn += ' ' + remCN.map(w=>{ const obj=vocab.find(v=>v.word===w); return obj?`“${extractChineseMeaning(obj.meaning)}”在脑海中回响。`:''; }).join('');
+
+            const highlightEN = (text, words) => {
+                let res=text; [...words].sort((a,b)=>b.length-a.length).forEach(w=>{
+                    const regex=new RegExp(`\\b(${w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})\\b`,'gi');
+                    res=res.replace(regex,'<span class="story-word">$1</span>');
+                }); return res;
+            };
+            const highlightCN = (text, words) => {
+                let res=text; words.forEach(w=>{
+                    const cn=extractChineseMeaning(w.meaning||''); if(cn.length>=2){
+                        const regex=new RegExp(`(${cn.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`,'g');
+                        res=res.replace(regex,'<span class="story-word-cn">$1</span>');
+                    }
+                }); return res;
+            };
+            return { storyEn: highlightEN(storyEn,allWords), storyCn: highlightCN(storyCn,words) };
+        }
+
+        function highlightExample(example, word) {
+            if(!example) return '';
+            return example.replace(new RegExp(`\\b(${word.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})\\b`,'gi'), '<span class="highlight">$1</span>');
+        }
+
+        function showToast(msg, duration=2000) {
+            const toast=document.getElementById('toast'); toast.textContent=msg; toast.classList.add('show');
+            clearTimeout(toast._timeout); toast._timeout=setTimeout(()=>toast.classList.remove('show'), duration);
+        }
+
+        function getPunchDaysCount() {
+            return Object.values(appData.dailyWords).filter(d=>d.markedDone).length;
+        }
+
+        function renderAll() {
+            const level = appData.level;
+            document.querySelectorAll('.level-btn').forEach(b=>b.classList.toggle('active', b.dataset.level===level));
+            const d=new Date(); const days=['日','一','二','三','四','五','六'];
+            document.getElementById('dateDisplay').textContent = `📅 ${TODAY} 星期${days[d.getDay()]} | 词库: ${level.toUpperCase()}`;
+
+            const dailyEntry = getTodayWords(appData, level);
+            const newWords = dailyEntry.newWords || [];
+            const reviewWords = dailyEntry.reviewWords || [];
+            document.getElementById('newCount').textContent = newWords.length;
+            document.getElementById('reviewCount').textContent = reviewWords.length;
+            document.getElementById('totalLearned').textContent = Object.keys(appData.wordRecords).filter(k=>k.startsWith(level+'::')).length;
+            const totalToday = newWords.length + reviewWords.length;
+            const pct = dailyEntry.markedDone ? 100 : Math.min(100, Math.round((totalToday/30)*100));
+            document.getElementById('progressFill').style.width = pct+'%';
+            document.getElementById('progressLabel').textContent = dailyEntry.markedDone ? '✅ 今日已完成' : `今日进度: ${totalToday}/30 词`;
+            document.getElementById('punchDays').textContent = getPunchDaysCount();
+
+            const newContainer = document.getElementById('newWordsContainer');
+            newContainer.innerHTML = newWords.length ? newWords.map((w,i)=>`
+                <div class="word-card new-word">
+                    <span class="tag new-tag">🆕 新词</span>
+                    <div class="word-row"><span class="word">${w.word}</span><span class="phonetic">${w.phonetic||''}</span></div>
+                    <div class="meaning">📝 ${w.meaning}</div>
+                    ${w.example ? `<div class="example">💬 ${highlightExample(w.example, w.word)}<br><small>${w.exampleCn||''}</small></div>` : ''}
+                    <button class="master-btn" data-word="${w.word}" data-type="new">⭐ 掌握</button>
+                </div>`).join('') : '<div class="empty-state">🎉 今日新词已学完</div>';
+
+            const reviewContainer = document.getElementById('reviewWordsContainer');
+            reviewContainer.innerHTML = reviewWords.length ? reviewWords.map((w,i)=>`
+                <div class="word-card review-word">
+                    <span class="tag review-tag">🔄 复习 · ${w._reviewCount||1}/${EBBINGHAUS_INTERVALS.length}</span>
+                    <div class="word-row"><span class="word">${w.word}</span><span class="phonetic">${w.phonetic||''}</span></div>
+                    <div class="meaning">📝 ${w.meaning}</div>
+                    ${w.example ? `<div class="example">💬 ${highlightExample(w.example, w.word)}<br><small>${w.exampleCn||''}</small></div>` : ''}
+                    <button class="master-btn" data-word="${w.word}" data-type="review">⭐ 掌握</button>
+                </div>`).join('') : '<div class="empty-state">📭 今日无复习单词</div>';
+
+            document.getElementById('storyContainer').innerHTML = dailyEntry.story ? `
+                <div class="story-card">
+                    <h3>📖 今日巩固故事</h3>
+                    <div class="story-en">${dailyEntry.story}</div>
+                    <hr class="divider">
+                    <h3>🇨🇳 中文翻译</h3>
+                    <div class="story-cn">${dailyEntry.storyCn}</div>
+                </div>` : '<div class="empty-state">📝 故事生成中...</div>';
+        }
+
+        // 掌握按钮事件委托
+        document.addEventListener('click', function(e) {
+            const btn = e.target.closest('.master-btn');
+            if(!btn) return;
+            const word = btn.dataset.word;
+            const type = btn.dataset.type;
+            const level = appData.level;
+            const today = TODAY;
+            if(!appData.dailyWords[today]) return;
+
+            const wKey = getWordKey(level, word);
+            if(!appData.wordRecords[wKey]) {
+                // 新词可能还没记录？不应该，但防护
+                appData.wordRecords[wKey] = { word, learnDate: today, reviewSchedule: generateReviewSchedule(today), reviewsCompleted:0, lastReviewedDate:null, mastered:true };
+            } else {
+                appData.wordRecords[wKey].mastered = true;
+            }
+
+            if(type === 'new') {
+                appData.dailyWords[today].newWords = appData.dailyWords[today].newWords.filter(w => w.word !== word);
+            } else if(type === 'review') {
+                appData.dailyWords[today].reviewWords = appData.dailyWords[today].reviewWords.filter(w => w.word !== word);
+            }
+
+            saveData(appData);
+            renderAll();
+            showToast(`✅ “${word}” 已标记为掌握，不再复习`);
+        });
+
+        document.getElementById('levelSelector').addEventListener('click', e => {
+            const btn = e.target.closest('.level-btn');
+            if(!btn) return;
+            const newLevel = btn.dataset.level;
+            if(newLevel !== appData.level) {
+                appData.level = newLevel;
+                delete appData.dailyWords[TODAY];
+                saveData(appData);
+                renderAll();
+                showToast(`✅ 已切换到${newLevel.toUpperCase()}`);
+            }
+        });
+        document.getElementById('btnRefresh').addEventListener('click', ()=>{
+            const old = appData.dailyWords[TODAY];
+            if(old?.newWords) old.newWords.forEach(nw=> delete appData.wordRecords[getWordKey(appData.level,nw.word)]);
+            if(old?.reviewWords) old.reviewWords.forEach(rw=>{
+                const key=rw._wordKey||getWordKey(appData.level,rw.word);
+                if(appData.wordRecords[key]) {
+                    appData.wordRecords[key].reviewsCompleted = Math.max(0,(appData.wordRecords[key].reviewsCompleted||1)-1);
+                    appData.wordRecords[key].lastReviewedDate=null;
+                }
+            });
+            delete appData.dailyWords[TODAY];
+            saveData(appData); renderAll(); showToast('🔄 已刷新');
+        });
+        document.getElementById('btnPunch').addEventListener('click', ()=>{
+            if(!appData.dailyWords[TODAY]) return showToast('请先生成单词');
+            if(appData.dailyWords[TODAY].markedDone) return showToast('今日已打卡');
+            appData.dailyWords[TODAY].markedDone = true;
+            saveData(appData); renderAll();
+            showToast('📌 打卡成功！累计 '+getPunchDaysCount()+' 天');
+        });
+        document.getElementById('btnReset').addEventListener('click', ()=>{
+            if(confirm('确定重置所有进度吗？')) {
+                appData = getDefaultData(); saveData(appData); renderAll(); showToast('🗑️ 已重置');
+            }
+        });
+
+        function init() {
+            renderAll();
+            localStorage.setItem('eibbinghaus_last_check', TODAY);
+        }
+        init();
+    })();
+</script>
+</body>
+</html>
